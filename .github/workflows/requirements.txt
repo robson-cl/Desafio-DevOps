@@ -1,3 +1,0 @@
-requirements.txt
-Flask==2.3.6
-pytest==7.4.2
