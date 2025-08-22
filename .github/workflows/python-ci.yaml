@@ -7,10 +7,8 @@ on:
     branches: [ "main", "stage" ]
 
 jobs:
-    # Teste Semântico (pytest)
   test:
     runs-on: ubuntu-latest
-    needs: lint
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
