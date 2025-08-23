@@ -60,7 +60,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           terraform plan -detailed-exitcode -out=tfplan
-          echo "exit_code=$?" >> $GITHUB_ENV
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
 
       - name: Terraform Apply
         if: env.exit_code == '2'
