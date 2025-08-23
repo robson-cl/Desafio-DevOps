@@ -63,12 +63,13 @@ jobs:
           echo "exit_code=${exit_code:-0}" >> $GITHUB_ENV
 
       - name: Terraform Apply
+        if: env.exit_code == '2'
         working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
 
   deploy:
     runs-on: ubuntu-latest
