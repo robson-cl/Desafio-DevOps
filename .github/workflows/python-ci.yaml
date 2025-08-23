@@ -77,6 +77,8 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v3
+        with:
+          region: ${{ secrets.AWS_REGION }}
 
       - name: Login no ECR
         id: login-ecr
