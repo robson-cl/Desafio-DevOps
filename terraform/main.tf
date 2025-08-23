@@ -128,21 +128,21 @@ resource "aws_ecs_task_definition" "task" {
 }
 
 # 9. ECS Fargate Service
-resource "aws_ecs_service" "service" {
-  name            = var.app_name
-  cluster         = aws_ecs_cluster.ecs.id
-  task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
-  }
-
-  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role_policy]
-}
+#resource "aws_ecs_service" "service" {
+#  name            = var.app_name
+#  cluster         = aws_ecs_cluster.ecs.id
+#  task_definition = aws_ecs_task_definition.task.arn
+#  desired_count   = var.desired_count
+#  launch_type     = "FARGATE"
+#
+#  network_configuration {
+#    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+#    security_groups = [aws_security_group.ecs_sg.id]
+#    assign_public_ip = true
+#  }
+#
+#  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role_policy]
+#}
 
 # 10. criação do ALB e do target group
 resource "aws_security_group" "alb_sg" {
@@ -208,7 +208,7 @@ resource "aws_lb_listener" "app_listener" {
 }
 
 # Adicionar dependência do ECS Service no Target Group
-resource "aws_ecs_service" "service" {
+resource "aws_ecs_service" "service_with_alb" {
   name            = var.app_name
   cluster         = aws_ecs_cluster.ecs.id
   task_definition = aws_ecs_task_definition.task.arn
