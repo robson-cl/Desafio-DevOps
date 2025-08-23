@@ -17,3 +17,13 @@ variable "desired_count" {
   description = "Número de tasks"
   default     = 1
 }
+
+variable "alb_port" {
+  description = "Porta do ALB"
+  default     = 80
+}
+
+variable "alb_health_check_path" {
+  description = "Path de health check do ALB"
+  default     = "/health"
+}
