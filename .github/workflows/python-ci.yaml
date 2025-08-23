@@ -58,3 +58,44 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform apply -auto-approve
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: terraform
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Login no ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build e Push da imagem
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          IMAGE_REPO_NAME=desafio-devops
+          IMAGE_TAG=latest
+          ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
+
+          echo "Construindo imagem..."
+          docker build -t $IMAGE_REPO_NAME .
+
+          echo "Tagueando imagem..."
+          docker tag $IMAGE_REPO_NAME:latest $ECR_URI:$IMAGE_TAG
+
+          echo "Enviando imagem para o ECR..."
+          docker push $ECR_URI:$IMAGE_TAG
+
+      - name: Atualizar serviço no ECS
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          CLUSTER_NAME: desafio-devops-cluster
+          SERVICE_NAME: desafio-devops-service
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --force-new-deployment \
+            --region $AWS_REGION
