@@ -96,7 +96,7 @@ jobs:
           ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
 
           echo "Construindo imagem..."
-          docker build -t $IMAGE_REPO_NAME .
+          docker build -t $IMAGE_REPO_NAME -f api/Dockerfile api/
 
           echo "Tagueando imagem..."
           docker tag $IMAGE_REPO_NAME:latest $ECR_URI:$IMAGE_TAG
