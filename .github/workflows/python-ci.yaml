@@ -51,26 +51,50 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform init
 
-      - name: Terraform Plan
-        id: plan
+#      - name: Terraform Plan
+#        id: plan
+#        working-directory: terraform
+#        env:
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_REGION: ${{ secrets.AWS_REGION }}
+#        run: |
+#          terraform plan -detailed-exitcode -out=tfplan || exit_code=$?
+#          exit_code=${exit_code:-0}
+#          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+#        outputs:
+#          exit_code: ${{ steps.plan.outputs.exit_code }}
+#
+#      - name: Terraform Apply
+#        if: steps.plan.outputs.exit_code == '2'
+#        working-directory: terraform
+#        env:
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_REGION: ${{ secrets.AWS_REGION }}
+#        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Plan & Apply
         working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          terraform plan -detailed-exitcode -out=tfplan || exit_code=$?
-          exit_code=${exit_code:-0}
-          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          terraform init
+          terraform plan -detailed-exitcode -out=tfplan
+          PLAN_EXIT_CODE=$?
 
-      - name: Terraform Apply
-        if: steps.plan.outputs.exit_code == '2'
-        working-directory: terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform apply -auto-approve tfplan
+          if [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "No changes to apply"
+          elif [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "Changes detected, applying..."
+            terraform apply -auto-approve tfplan
+          else
+            echo " Terraform plan failed"
+            exit $PLAN_EXIT_CODE
+          fi
+
 
   deploy:
     runs-on: ubuntu-latest
