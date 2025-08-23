@@ -208,7 +208,7 @@ resource "aws_lb_listener" "app_listener" {
 }
 
 # Adicionar dependência do ECS Service no Target Group
-resource "aws_ecs_service" "service_with_alb" {
+resource "aws_ecs_service" "service" {
   name            = var.app_name
   cluster         = aws_ecs_cluster.ecs.id
   task_definition = aws_ecs_task_definition.task.arn
