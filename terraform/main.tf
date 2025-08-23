@@ -1,34 +1,11 @@
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
-    }
-  }
-
-  backend "s3" {
-    bucket         = "terraform-devops-desafio" # Substitua pelo seu bucket
-    key            = "desafio-devops/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "notes"            # Substitua pelo nome da tabela DynamoDB
-    encrypt        = true
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
-# VPC
+# 1. VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   tags = { Name = "${var.app_name}-vpc" }
 }
 
-# Subnets públicas
+# 2. Subnets públicas
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
@@ -45,7 +22,7 @@ resource "aws_subnet" "public_b" {
   tags = { Name = "${var.app_name}-subnet-b" }
 }
 
-# Internet Gateway e Route Table
+# 3. Internet Gateway + Route Table
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.app_name}-igw" }
@@ -70,7 +47,7 @@ resource "aws_route_table_association" "b" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group
+# 4. Security Group
 resource "aws_security_group" "ecs_sg" {
   name   = "${var.app_name}-sg"
   vpc_id = aws_vpc.main.id
@@ -92,21 +69,23 @@ resource "aws_security_group" "ecs_sg" {
   tags = { Name = "${var.app_name}-sg" }
 }
 
-# ECR Repository
+# 5. ECR Repository
 resource "aws_ecr_repository" "repo" {
   name                 = var.app_name
   image_tag_mutability = "MUTABLE"
-  image_scanning_configuration { scan_on_push = true }
+  image_scanning_configuration {
+    scan_on_push = true
+  }
   tags = { Name = var.app_name }
 }
 
-# ECS Cluster
+# 6. ECS Cluster
 resource "aws_ecs_cluster" "ecs" {
   name = var.app_name
   tags = { Name = var.app_name }
 }
 
-# IAM Role para ECS Task Execution
+# 7. IAM Role para ECS Task Execution
 data "aws_iam_policy_document" "ecs_task_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -127,7 +106,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ECS Task Definition
+# 8. ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
   family                   = var.app_name
   cpu                      = "256"
@@ -141,12 +120,14 @@ resource "aws_ecs_task_definition" "task" {
       name      = var.app_name
       image     = "${aws_ecr_repository.repo.repository_url}:latest"
       essential = true
-      portMappings = [{ containerPort = var.container_port, hostPort = var.container_port }]
+      portMappings = [
+        { containerPort = var.container_port, hostPort = var.container_port }
+      ]
     }
   ])
 }
 
-# ECS Fargate Service
+# 9. ECS Fargate Service
 resource "aws_ecs_service" "service" {
   name            = var.app_name
   cluster         = aws_ecs_cluster.ecs.id
@@ -162,8 +143,3 @@ resource "aws_ecs_service" "service" {
 
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role_policy]
 }
-
-output "ecr_repository_url" { value = aws_ecr_repository.repo.repository_url }
-output "ecs_cluster_name" { value = aws_ecs_cluster.ecs.name }
-output "ecs_service_name" { value = aws_ecs_service.service.name }
-output "ecs_task_execution_role_arn" { value = aws_iam_role.ecs_task_execution_role.arn }

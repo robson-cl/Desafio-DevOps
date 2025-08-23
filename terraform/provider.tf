@@ -7,8 +7,10 @@ terraform {
       version = ">= 5.0"
     }
   }
+  # Backend local, opcional
+  # backend "local" { path = "terraform.tfstate" }
 }
 
 provider "aws" {
-  region     = var.aws_region
+  region = var.aws_region
 }
