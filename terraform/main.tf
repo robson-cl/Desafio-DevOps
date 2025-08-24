@@ -167,6 +167,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
           awslogs-group         = "/ecs/nginx-proxy"
           awslogs-region        = "us-east-1"
           awslogs-stream-prefix = "ecs"
+        }
       }
     }
   ])
