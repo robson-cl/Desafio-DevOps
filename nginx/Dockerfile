@@ -1,19 +1,19 @@
-# Use imagem oficial do Nginx
+# Usar imagem oficial do Nginx
 FROM nginx:alpine
 
-# Instalar AWS CLI (necessário para pegar parâmetros)
-RUN apk add --no-cache bash curl jq python3 py3-pip && \
-    pip3 install --break-system-packages awscli
-    
-# Copia arquivo de configuração
+# Criar diretório para os certificados
+RUN mkdir -p /etc/nginx/certs
+
+# Copiar certificados para dentro da imagem
+COPY certs/server.crt /etc/nginx/certs/server.crt
+COPY certs/server.key /etc/nginx/certs/server.key
+COPY certs/ca.crt     /etc/nginx/certs/ca.crt
+
+# Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Copiar entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Expõe porta HTTPS
+# Expor porta HTTPS
 EXPOSE 443
 
-# Chamar entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+# Rodar Nginx em foreground
+CMD ["nginx", "-g", "daemon off;"]
