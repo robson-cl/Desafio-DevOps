@@ -367,7 +367,7 @@ resource "aws_ecs_service" "nginx_proxy" {
 
 # ECS service
 resource "aws_ecs_service" "service" {
-  name            = "var.app_name"
+  name            = var.app_name
   cluster         = aws_ecs_cluster.ecs.id
   task_definition = aws_ecs_task_definition.task.arn
   desired_count   = 1
