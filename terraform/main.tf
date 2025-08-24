@@ -161,20 +161,6 @@ resource "aws_ecs_task_definition" "nginx_task" {
           hostPort      = 443
         }
       ]
-      environment = [
-        {
-          name  = "AWS_ACCESS_KEY_ID"
-          value = var.aws_access_key_id
-        },
-        {
-          name  = "AWS_SECRET_ACCESS_KEY"
-          value = var.aws_secret_access_key
-        },
-        {
-          name  = "AWS_REGION"
-          value = "us-east-1"
-        }
-      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
