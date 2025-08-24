@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -ex
 
 # Diretório para os certificados
 mkdir -p /etc/nginx/certs
