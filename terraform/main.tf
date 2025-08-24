@@ -79,6 +79,15 @@ resource "aws_ecr_repository" "repo" {
   tags = { Name = var.app_name }
 }
 
+resource "aws_ecr_repository" "nginx_repo" {
+  name                 = "nginx-proxy"
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  tags = { Name = "nginx-proxy" }
+}
+
 # 6. ECS Cluster
 resource "aws_ecs_cluster" "ecs" {
   name = var.app_name
@@ -145,13 +154,103 @@ resource "aws_ecs_task_definition" "task" {
 #}
 
 # 10. criação do ALB e do target group
+#resource "aws_security_group" "alb_sg" {
+#  name   = "${var.app_name}-alb-sg"
+#  vpc_id = aws_vpc.main.id
+#
+#  ingress {
+#    from_port   = 80
+#    to_port     = 80
+#    protocol    = "tcp"
+#    cidr_blocks = ["0.0.0.0/0"]
+#  }
+#
+#  egress {
+#    from_port   = 0
+#    to_port     = 0
+#    protocol    = "-1"
+#    cidr_blocks = ["0.0.0.0/0"]
+#  }
+#
+#  tags = { Name = "${var.app_name}-alb-sg" }
+#}
+#
+## ALB
+#resource "aws_lb" "app_alb" {
+#  name               = "${var.app_name}-alb"
+#  internal           = false
+#  load_balancer_type = "application"
+#  security_groups    = [aws_security_group.alb_sg.id]
+#  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+#
+#  enable_deletion_protection = false
+#  tags = { Name = "${var.app_name}-alb" }
+#}
+#
+# Target Group
+#resource "aws_lb_target_group" "app_tg" {
+#  name     = "${var.app_name}-tg"
+#  port     = var.container_port
+#  protocol = "HTTP"
+#  vpc_id   = aws_vpc.main.id
+#  target_type = "ip"
+#  health_check {
+#    path                = "/health"
+#    interval            = 30
+#    timeout             = 5
+#    healthy_threshold   = 2
+#    unhealthy_threshold = 2
+#    matcher             = "200-399"
+#  }
+#}
+#
+## Listener
+#resource "aws_lb_listener" "app_listener" {
+#  load_balancer_arn = aws_lb.app_alb.arn
+#  port              = 80
+#  protocol          = "HTTP"
+#
+#  default_action {
+#    type             = "forward"
+#    target_group_arn = aws_lb_target_group.app_tg.arn
+#  }
+#}
+#
+## Adicionar dependência do ECS Service no Target Group
+#resource "aws_ecs_service" "service" {
+#  name            = var.app_name
+#  cluster         = aws_ecs_cluster.ecs.id
+#  task_definition = aws_ecs_task_definition.task.arn
+#  desired_count   = var.desired_count
+#  launch_type     = "FARGATE"
+#
+#  network_configuration {
+#    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+#    security_groups = [aws_security_group.ecs_sg.id]
+#    assign_public_ip = true
+#  }
+#
+#  load_balancer {
+#    target_group_arn = aws_lb_target_group.app_tg.arn
+#    container_name   = var.app_name
+#    container_port   = var.container_port
+#  }
+#
+#  depends_on = [
+#    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+#    aws_lb_listener.app_listener
+#  ]
+#}
+
+
+# 1. Security Group do ALB
 resource "aws_security_group" "alb_sg" {
   name   = "${var.app_name}-alb-sg"
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -166,25 +265,14 @@ resource "aws_security_group" "alb_sg" {
   tags = { Name = "${var.app_name}-alb-sg" }
 }
 
-# ALB
-resource "aws_lb" "app_alb" {
-  name               = "${var.app_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-
-  enable_deletion_protection = false
-  tags = { Name = "${var.app_name}-alb" }
-}
-
-# Target Group
+# 2. Target Group
 resource "aws_lb_target_group" "app_tg" {
-  name     = "${var.app_name}-tg"
-  port     = var.container_port
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "${var.app_name}-tg"
+  port        = var.container_port
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
   target_type = "ip"
+
   health_check {
     path                = "/health"
     interval            = 30
@@ -195,11 +283,14 @@ resource "aws_lb_target_group" "app_tg" {
   }
 }
 
-# Listener
-resource "aws_lb_listener" "app_listener" {
+# 3. Listener HTTP (usando ARN já existente)
+resource "aws_lb_listener" "app_listener_https" {
   load_balancer_arn = aws_lb.app_alb.arn
   port              = 80
   protocol          = "HTTP"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+
+  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
 
   default_action {
     type             = "forward"
@@ -207,7 +298,24 @@ resource "aws_lb_listener" "app_listener" {
   }
 }
 
-# Adicionar dependência do ECS Service no Target Group
+# 4. (opcional) Listener HTTP -> HTTPS
+resource "aws_lb_listener" "app_listener_http" {
+  load_balancer_arn = aws_lb.app_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# 5. ECS Service
 resource "aws_ecs_service" "service" {
   name            = var.app_name
   cluster         = aws_ecs_cluster.ecs.id
@@ -229,6 +337,6 @@ resource "aws_ecs_service" "service" {
 
   depends_on = [
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
-    aws_lb_listener.app_listener
+    aws_lb_listener.app_listener_https
   ]
 }
