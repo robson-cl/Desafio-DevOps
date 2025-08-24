@@ -141,7 +141,7 @@ resource "aws_ecs_task_definition" "task" {
   ])
 }
 
-# task definition nginx teste
+# task definition nginx
 resource "aws_ecs_task_definition" "nginx_task" {
   family                   = "nginx-proxy"
   cpu                      = "256"
