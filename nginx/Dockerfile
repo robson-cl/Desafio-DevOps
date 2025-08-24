@@ -2,8 +2,9 @@
 FROM nginx:alpine
 
 # Instalar AWS CLI (necessário para pegar parâmetros)
-RUN apk add --no-cache bash curl jq python3 py3-pip && pip3 install awscli
-
+RUN apk add --no-cache bash curl jq python3 py3-pip && \
+    pip3 install --break-system-packages awscli
+    
 # Copia arquivo de configuração
 COPY nginx.conf /etc/nginx/nginx.conf
 
