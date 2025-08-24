@@ -341,7 +341,7 @@ resource "aws_lb_listener" "app_listener_http" {
 
 # 5. nginx Service
 resource "aws_ecs_service" "nginx_proxy" {
-  name            = "nginx-proxy"
+  name            = "var.nginx_name"
   cluster         = aws_ecs_cluster.ecs.id
   task_definition = aws_ecs_task_definition.nginx_task.arn
   desired_count   = var.desired_count
@@ -356,7 +356,7 @@ resource "aws_ecs_service" "nginx_proxy" {
   load_balancer {
     target_group_arn = aws_lb_target_group.app_tg.arn
     container_name   = "nginx-proxy"
-    container_port   = var.container_port
+    container_port   = var.container_port_nginx
   }
 
   depends_on = [

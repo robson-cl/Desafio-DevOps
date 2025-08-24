@@ -8,9 +8,19 @@ variable "app_name" {
   default     = "desafio-devops"
 }
 
+variable "nginx_name" {
+  description = "nginx nome"
+  default     = "nginx-proxy"
+}
+
 variable "container_port" {
   description = "Porta da aplicação"
-  default     = 5000
+  default     = 443
+}
+
+variable "container_port_nginx" {
+  description = "Porta do nginx"
+  default     = 443
 }
 
 variable "desired_count" {
