@@ -175,18 +175,18 @@ resource "aws_ecs_task_definition" "task" {
 #  tags = { Name = "${var.app_name}-alb-sg" }
 #}
 #
-## ALB
-#resource "aws_lb" "app_alb" {
-#  name               = "${var.app_name}-alb"
-#  internal           = false
-#  load_balancer_type = "application"
-#  security_groups    = [aws_security_group.alb_sg.id]
-#  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-#
-#  enable_deletion_protection = false
-#  tags = { Name = "${var.app_name}-alb" }
-#}
-#
+# ALB
+resource "aws_lb" "app_alb" {
+  name               = "${var.app_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  enable_deletion_protection = false
+  tags = { Name = "${var.app_name}-alb" }
+}
+
 # Target Group
 #resource "aws_lb_target_group" "app_tg" {
 #  name     = "${var.app_name}-tg"
@@ -286,8 +286,8 @@ resource "aws_lb_target_group" "app_tg" {
 # 3. Listener HTTP (usando ARN já existente)
 resource "aws_lb_listener" "app_listener_https" {
   load_balancer_arn = aws_lb.app_alb.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 443
+  protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
   certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
