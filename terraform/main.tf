@@ -224,6 +224,29 @@ resource "aws_lb" "app_alb" {
   tags = { Name = "${var.app_name}-alb" }
 }
 
+# Target Group do Nginx
+resource "aws_lb_target_group" "nginx_tg" {
+  name        = "${var.app_name}-nginx-tg"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200-399"
+    protocol            = "HTTPS"
+  }
+
+  tags = {
+    Name = "${var.app_name}-nginx-tg"
+  }
+}
+
 # Target Group
 #resource "aws_lb_target_group" "app_tg" {
 #  name     = "${var.app_name}-tg"
@@ -279,80 +302,50 @@ resource "aws_lb" "app_alb" {
 #  ]
 #}
 
-
-# 1. Security Group do ALB
-resource "aws_security_group" "alb_sg" {
-  name   = "${var.app_name}-alb-sg"
-  vpc_id = aws_vpc.main.id
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "${var.app_name}-alb-sg" }
+## --- Service Discovery Namespace ---
+resource "aws_service_discovery_private_dns_namespace" "app_ns" {
+  name = "${var.app_name}.local"
+  vpc  = aws_vpc.main.id
+  description = "Namespace interno para a aplicação"
 }
 
-# 2. Target Group
-resource "aws_lb_target_group" "app_tg" {
-  name        = "${var.app_name}-tg"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200-399"
-  }
-}
-
-# 3. Listener HTTP 
-resource "aws_lb_listener" "app_listener_https" {
-  load_balancer_arn = aws_lb.app_alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-
-  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg.arn
-  }
-}
-
-# 4. (opcional) Listener HTTP -> HTTPS
-resource "aws_lb_listener" "app_listener_http" {
-  load_balancer_arn = aws_lb.app_alb.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
+# --- Service Discovery Service para a aplicação ---
+resource "aws_service_discovery_service" "app_sd" {
+  name = var.app_name
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.app_ns.id
+    routing_policy = "MULTIVALUE"
+    dns_records {
+      type = "A"
+      ttl  = 10
     }
   }
 }
 
-# 5. nginx Service
+# --- ECS Service da aplicação usando Service Discovery ---
+resource "aws_ecs_service" "service" {
+  name            = var.app_name
+  cluster         = aws_ecs_cluster.ecs.id
+  task_definition = aws_ecs_task_definition.task.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.ecs_sg.id]
+    assign_public_ip = false   # não precisa de IP público para serviço interno
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.app_sd.arn
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy
+  ]
+}
+
+# --- ECS Service do Nginx (público) permanece com ALB ---
 resource "aws_ecs_service" "nginx_proxy" {
   name            = var.nginx_name
   cluster         = aws_ecs_cluster.ecs.id
@@ -367,7 +360,7 @@ resource "aws_ecs_service" "nginx_proxy" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.app_tg.arn
+    target_group_arn = aws_lb_target_group.nginx_tg.arn
     container_name   = var.nginx_name
     container_port   = var.container_port_nginx
   }
@@ -378,21 +371,16 @@ resource "aws_ecs_service" "nginx_proxy" {
   ]
 }
 
-# ECS service
-resource "aws_ecs_service" "service" {
-  name            = var.app_name
-  cluster         = aws_ecs_cluster.ecs.id
-  task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+resource "aws_lb_listener" "nginx_listener_https" {
+  load_balancer_arn = aws_lb.app_alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
 
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.nginx_tg.arn
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role_policy
-  ]
 }
+

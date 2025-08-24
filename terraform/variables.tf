@@ -14,8 +14,7 @@ variable "nginx_name" {
 }
 
 variable "container_port" {
-  description = "Porta da aplicação"
-  default     = 443
+  default = 5000
 }
 
 variable "container_port_nginx" {
@@ -36,4 +35,8 @@ variable "alb_port" {
 variable "alb_health_check_path" {
   description = "Path de health check do ALB"
   default     = "/health"
+}
+
+variable "desired_count" {
+  default = 1
 }
