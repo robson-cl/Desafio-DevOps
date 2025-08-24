@@ -56,7 +56,6 @@ resource "aws_route_table_association" "b" {
 # =========================
 # 4. Security Groups
 # =========================
-# ECS Service SG
 resource "aws_security_group" "ecs_sg" {
   name   = "${var.app_name}-sg"
   vpc_id = aws_vpc.main.id
@@ -78,7 +77,6 @@ resource "aws_security_group" "ecs_sg" {
   tags = { Name = "${var.app_name}-sg" }
 }
 
-# ALB SG
 resource "aws_security_group" "alb_sg" {
   name   = "${var.app_name}-alb-sg"
   vpc_id = aws_vpc.main.id
@@ -106,18 +104,14 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_ecr_repository" "repo" {
   name                 = var.app_name
   image_tag_mutability = "MUTABLE"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
+  image_scanning_configuration { scan_on_push = true }
   tags = { Name = var.app_name }
 }
 
 resource "aws_ecr_repository" "nginx_repo" {
   name                 = "nginx-proxy"
   image_tag_mutability = "MUTABLE"
-  image_scanning_configuration {
-    scan_on_push = true
-  }
+  image_scanning_configuration { scan_on_push = true }
   tags = { Name = "nginx-proxy" }
 }
 
@@ -130,7 +124,7 @@ resource "aws_ecs_cluster" "ecs" {
 }
 
 # =========================
-# 7. IAM Role para ECS Task Execution
+# 7. IAM Role ECS Task Execution
 # =========================
 data "aws_iam_policy_document" "ecs_task_assume_role" {
   statement {
@@ -160,7 +154,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_ssm_attach" {
 # =========================
 # 8. ECS Task Definitions
 # =========================
-# App
 resource "aws_ecs_task_definition" "task" {
   family                   = var.app_name
   cpu                      = "256"
@@ -174,14 +167,11 @@ resource "aws_ecs_task_definition" "task" {
       name      = var.app_name
       image     = "${aws_ecr_repository.repo.repository_url}:latest"
       essential = true
-      portMappings = [
-        { containerPort = var.container_port, hostPort = var.container_port }
-      ]
+      portMappings = [{ containerPort = var.container_port, hostPort = var.container_port }]
     }
   ])
 }
 
-# Nginx
 resource "aws_ecs_task_definition" "nginx_task" {
   family                   = "nginx-proxy"
   cpu                      = "256"
@@ -195,9 +185,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
       name      = "nginx-proxy"
       image     = "${aws_ecr_repository.nginx_repo.repository_url}:latest"
       essential = true
-      portMappings = [
-        { containerPort = 443, hostPort = 443 }
-      ]
+      portMappings = [{ containerPort = 443, hostPort = 443 }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -211,7 +199,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
 }
 
 # =========================
-# 9. Service Discovery (App Interno)
+# 9. Service Discovery
 # =========================
 resource "aws_service_discovery_private_dns_namespace" "app_ns" {
   name        = "${var.app_name}.local"
@@ -232,7 +220,7 @@ resource "aws_service_discovery_service" "app_sd" {
 }
 
 # =========================
-# 10. ECS Service (App Interno)
+# 10. ECS Service App Interno
 # =========================
 resource "aws_ecs_service" "service" {
   name            = var.app_name
@@ -257,9 +245,18 @@ resource "aws_ecs_service" "service" {
 }
 
 # =========================
-# 11. ECS Service (Nginx Público)
+# 11. ECS Service Nginx Público + ALB
 # =========================
-# Target Group Nginx
+resource "aws_lb" "app_alb" {
+  name               = "${var.app_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  enable_deletion_protection = false
+  tags = { Name = "${var.app_name}-alb" }
+}
+
 resource "aws_lb_target_group" "nginx_tg" {
   name        = "${var.app_name}-nginx-tg"
   port        = 443
@@ -272,4 +269,48 @@ resource "aws_lb_target_group" "nginx_tg" {
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
-    unhealthy
+    unhealthy_threshold = 2
+    matcher             = "200-399"
+    protocol            = "HTTPS"
+  }
+
+  tags = { Name = "${var.app_name}-nginx-tg" }
+}
+
+resource "aws_lb_listener" "nginx_listener_https" {
+  load_balancer_arn = aws_lb.app_alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.nginx_tg.arn
+  }
+}
+
+resource "aws_ecs_service" "nginx_proxy" {
+  name            = var.nginx_name
+  cluster         = aws_ecs_cluster.ecs.id
+  task_definition = aws_ecs_task_definition.nginx_task.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.nginx_tg.arn
+    container_name   = var.nginx_name
+    container_port   = var.container_port_nginx
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_lb_listener.nginx_listener_https
+  ]
+}
