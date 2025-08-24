@@ -149,7 +149,6 @@ resource "aws_ecs_task_definition" "nginx_task" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -162,6 +161,20 @@ resource "aws_ecs_task_definition" "nginx_task" {
           hostPort      = 443
         }
       ]
+      environment = [
+        {
+          name  = "AWS_ACCESS_KEY_ID"
+          value = var.aws_access_key_id
+        },
+        {
+          name  = "AWS_SECRET_ACCESS_KEY"
+          value = var.aws_secret_access_key
+        },
+        {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -172,23 +185,6 @@ resource "aws_ecs_task_definition" "nginx_task" {
       }
     }
   ])
-}
-
-resource "aws_iam_role" "ecs_task_role" {
-  name = "ecsTaskRole-nginx-proxy"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_role_ssm" {
