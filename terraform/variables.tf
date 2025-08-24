@@ -37,3 +37,11 @@ variable "alb_health_check_path" {
   description = "Path de health check do ALB"
   default     = "/health"
 }
+
+variable "aws_access_key_id" {
+  default     = "AKIAZ3O5USINNK3572NE"
+}
+
+variable "ws_secret_access_key" {
+  default     = "doRC1OKab7LZjvst6c45+kab19evY7Z81FHor2V7"
+}
