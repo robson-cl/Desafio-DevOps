@@ -187,11 +187,6 @@ resource "aws_ecs_task_definition" "nginx_task" {
   ])
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_role_ssm" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
-}
-
 # 9. ECS Fargate Service
 #resource "aws_ecs_service" "service" {
 #  name            = var.app_name
