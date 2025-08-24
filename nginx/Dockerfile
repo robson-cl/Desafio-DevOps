@@ -1,11 +1,18 @@
 # Use imagem oficial do Nginx
 FROM nginx:alpine
 
+# Instalar AWS CLI (necessário para pegar parâmetros)
+RUN apk add --no-cache bash curl jq python3 py3-pip && pip3 install awscli
+
 # Copia arquivo de configuração
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copiar entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expõe porta HTTPS
 EXPOSE 443
 
-# Comando para rodar o Nginx em foreground
-CMD ["nginx", "-g", "daemon off;"]
+# Chamar entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
