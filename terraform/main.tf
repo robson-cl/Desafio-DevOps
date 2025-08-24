@@ -161,6 +161,13 @@ resource "aws_ecs_task_definition" "nginx_task" {
           hostPort      = 443
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/nginx-proxy"
+          awslogs-region        = "us-east-1"
+          awslogs-stream-prefix = "ecs"
+      }
     }
   ])
 }
