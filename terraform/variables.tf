@@ -36,7 +36,3 @@ variable "alb_health_check_path" {
   description = "Path de health check do ALB"
   default     = "/health"
 }
-
-variable "desired_count" {
-  default = 1
-}
