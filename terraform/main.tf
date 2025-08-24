@@ -340,8 +340,8 @@ resource "aws_lb_listener" "app_listener_http" {
 }
 
 # 5. nginx Service
-resource "aws_ecs_service" "service" {
-  name            = 
+resource "aws_ecs_service" "nginx_proxy" {
+  name            = "nginx-proxy"
   cluster         = aws_ecs_cluster.ecs.id
   task_definition = aws_ecs_task_definition.nginx_task.arn
   desired_count   = var.desired_count
