@@ -236,7 +236,7 @@ resource "aws_ecs_service" "service" {
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   service_registries {
@@ -306,7 +306,7 @@ resource "aws_ecs_service" "nginx_proxy" {
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
