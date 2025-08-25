@@ -264,7 +264,7 @@ resource "aws_lb" "app_alb" {
 resource "aws_lb_target_group" "nginx_tg" {
   name        = "${var.app_name}-nginx-tg"
   port        = 80
-  protocol    = "HTTPS"
+  protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
@@ -275,7 +275,7 @@ resource "aws_lb_target_group" "nginx_tg" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
     matcher             = "200-399"
-    protocol            = "HTTPS"
+    protocol            = "HTTP"
   }
 
   tags = { Name = "${var.app_name}-nginx-tg" }
