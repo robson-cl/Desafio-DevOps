@@ -187,7 +187,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
       name      = "nginx-proxy"
       image     = "${aws_ecr_repository.nginx_repo.repository_url}:latest"
       essential = true
-      portMappings = [{ containerPort = 443, hostPort = 443 }]
+      portMappings = [{ containerPort = 80, hostPort = 80 }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -264,7 +264,7 @@ resource "aws_lb" "app_alb" {
 resource "aws_lb_target_group" "nginx_tg" {
   name        = "${var.app_name}-nginx-tg"
   port        = 80
-  protocol    = "HTTPS"
+  protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
