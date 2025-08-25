@@ -229,6 +229,8 @@ resource "aws_ecs_service" "service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  enable_execute_command = true
+
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
@@ -296,6 +298,8 @@ resource "aws_ecs_service" "nginx_proxy" {
   task_definition = aws_ecs_task_definition.nginx_task.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
+
+  enable_execute_command = true
 
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
