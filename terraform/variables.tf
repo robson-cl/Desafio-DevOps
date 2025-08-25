@@ -19,7 +19,7 @@ variable "container_port" {
 
 variable "container_port_nginx" {
   description = "Porta do nginx"
-  default     = 443
+  default     = 80
 }
 
 variable "desired_count" {
