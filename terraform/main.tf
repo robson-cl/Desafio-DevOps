@@ -161,6 +161,7 @@ resource "aws_ecs_task_definition" "task" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
@@ -179,6 +180,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
@@ -261,7 +263,7 @@ resource "aws_lb" "app_alb" {
 
 resource "aws_lb_target_group" "nginx_tg" {
   name        = "${var.app_name}-nginx-tg"
-  port        = 443
+  port        = 80
   protocol    = "HTTPS"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
