@@ -263,8 +263,8 @@ resource "aws_lb" "app_alb" {
 
 resource "aws_lb_target_group" "nginx_tg" {
   name        = "${var.app_name}-nginx-tg"
-  port        = 80
-  protocol    = "HTTP"
+  port        = 443
+  protocol    = "HTTPS"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
