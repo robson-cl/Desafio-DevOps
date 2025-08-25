@@ -19,7 +19,7 @@ variable "container_port" {
 
 variable "container_port_nginx" {
   description = "Porta do nginx"
-  default     = 80
+  default     = 443
 }
 
 variable "desired_count" {
@@ -29,7 +29,7 @@ variable "desired_count" {
 
 variable "alb_port" {
   description = "Porta do ALB"
-  default     = 80
+  default     = 443
 }
 
 variable "alb_health_check_path" {
