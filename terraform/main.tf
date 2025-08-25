@@ -265,7 +265,7 @@ resource "aws_lb_target_group" "nginx_tg" {
   target_type = "ip"
 
   health_check {
-    path                = "/"
+    path                = var.alb_health_check_path
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
