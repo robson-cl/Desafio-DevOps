@@ -187,7 +187,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
       name      = "nginx-proxy"
       image     = "${aws_ecr_repository.nginx_repo.repository_url}:latest"
       essential = true
-      portMappings = [{ containerPort = 80, hostPort = 80 }]
+      portMappings = [{ containerPort = 443, hostPort = 443 }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
