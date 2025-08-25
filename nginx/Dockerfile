@@ -11,6 +11,7 @@ RUN mkdir -p /etc/nginx/certs
 COPY certs/cc  /etc/nginx/certs/cc
 COPY certs/scr /etc/nginx/certs/scr
 COPY certs/scs /etc/nginx/certs/scs
+COPY certs/ske /etc/nginx/certs/ske
 
 # Copiar configuração customizada do Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
