@@ -108,13 +108,6 @@ resource "aws_ecr_repository" "repo" {
   tags = { Name = var.app_name }
 }
 
-resource "aws_ecr_repository" "nginx_repo" {
-  name                 = "nginx-proxy"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration { scan_on_push = true }
-  tags = { Name = "nginx-proxy" }
-}
-
 # =========================
 # 6. ECS Cluster
 # =========================
@@ -173,33 +166,6 @@ resource "aws_ecs_task_definition" "task" {
   ])
 }
 
-resource "aws_ecs_task_definition" "nginx_task" {
-  family                   = "nginx-proxy"
-  cpu                      = "256"
-  memory                   = "512"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "nginx-proxy"
-      image     = "${aws_ecr_repository.nginx_repo.repository_url}:latest"
-      essential = true
-      portMappings = [{ containerPort = 80, hostPort = 80 }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/nginx-proxy"
-          awslogs-region        = "us-east-1"
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
 # =========================
 # 9. Service Discovery
 # =========================
@@ -243,8 +209,15 @@ resource "aws_ecs_service" "service" {
     registry_arn = aws_service_discovery_service.app_sd.arn
   }
 
+    load_balancer {
+    target_group_arn = aws_lb_target_group.app_tg.arn
+    container_name   = var.app_name
+    container_port   = var.container_port
+  }
+
   depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role_policy
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_lb_listener.app_listener_https
   ]
 }
 
@@ -261,9 +234,22 @@ resource "aws_lb" "app_alb" {
   tags = { Name = "${var.app_name}-alb" }
 }
 
-resource "aws_lb_target_group" "nginx_tg" {
-  name        = "${var.app_name}-nginx-tg"
-  port        = 80
+resource "aws_lb_listener" "app_listener_https" {
+  load_balancer_arn = aws_lb.app_alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg.arn
+  }
+}
+
+resource "aws_lb_target_group" "app_tg" {
+  name        = "${var.app_name}-tg"
+  port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
@@ -278,45 +264,5 @@ resource "aws_lb_target_group" "nginx_tg" {
     protocol            = "HTTP"
   }
 
-  tags = { Name = "${var.app_name}-nginx-tg" }
-}
-
-resource "aws_lb_listener" "nginx_listener_https" {
-  load_balancer_arn = aws_lb.app_alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = "arn:aws:acm:us-east-1:677459038746:certificate/fd19549a-3b43-4d08-bfd3-9b207e6efe23"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.nginx_tg.arn
-  }
-}
-
-resource "aws_ecs_service" "nginx_proxy" {
-  name            = var.nginx_name
-  cluster         = aws_ecs_cluster.ecs.id
-  task_definition = aws_ecs_task_definition.nginx_task.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-
-  enable_execute_command = true
-
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.nginx_tg.arn
-    container_name   = var.nginx_name
-    container_port   = var.container_port_nginx
-  }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
-    aws_lb_listener.nginx_listener_https
-  ]
+  tags = { Name = "${var.app_name}-tg" }
 }
