@@ -23,8 +23,9 @@ output "alb_arn" {
 }
 
 output "alb_target_group_arn" {
-  value = aws_lb_target_group.nginx_tg.arn
+  value = aws_lb_target_group.app_tg.arn
 }
+
 variable "nginx_desired_count" {
   description = "Número de tasks do Nginx"
   default     = 1
