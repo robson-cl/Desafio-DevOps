@@ -3,11 +3,11 @@ name: Python CI + Terraform
 on:
   push:
     branches: 
-      - main
+#      - main
       - stage
   pull_request:
     branches: 
-      - main
+#      - main
       - stage
 
 jobs:
